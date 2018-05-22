@@ -1,0 +1,12 @@
+SocksPort 0
+
+SocksPolicy reject *
+ExitPolicy reject *:*
+
+Log notice syslog
+
+User debian-tor
+DataDirectory /var/lib/tor
+
+HiddenServiceDir /data/tor/
+HiddenServicePort 80 127.0.0.1:8080

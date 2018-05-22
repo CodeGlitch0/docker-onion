@@ -1,0 +1,48 @@
+#!/bin/bash
+set -o errexit
+
+echo -e "\n========================================================"
+# If DataDirectory or secret_id_key is mounted here, it must be owned by the debian-tor user
+chown -Rv debian-tor:debian-tor /var/lib/tor
+
+if [ ! -e /tor-config-done ]; then
+    touch /tor-config-done   # only run this once 
+
+    # Add a Nickname, if none has been set in torrc
+    if ! grep -q '^Nickname ' /etc/tor/torrc; then    
+        if [ ${TOR_NICKNAME} == "Tor4" ]; then
+            # if user did not change the default Nickname, genetrate a random pronounceable one
+            RPW=$(pwgen -0A 10)
+            TOR_NICKNAME=${TOR_NICKNAME}${RPW}
+            echo "Setting random Nickname: ${TOR_NICKNAME}"
+        else
+            echo "Setting chosen Nickname: ${TOR_NICKNAME}"
+        fi
+        echo -e "\nNickname ${TOR_NICKNAME}" >> /etc/tor/torrc
+    fi
+
+    # Add ContactInfo from env variable, if none has been set in torrc
+    if ! grep -q '^ContactInfo ' /etc/tor/torrc; then
+        if [  -n "${CONTACT_EMAIL}" ]; then
+            echo "Setting Contact Email: ${CONTACT_EMAIL}"
+            echo -e "\nContactInfo ${CONTACT_EMAIL}" >> /etc/tor/torrc
+        fi
+    fi
+
+    if [ ${DEST} == "127.0.0.1:8080" ]; then
+        echo "Tor service destination already set"
+    else
+        echo "Setting onion destination to: $DEST"
+        sed -re "s/^(HiddenServicePort)([[:space:]]+)(.+)([[:space:]]+)(.*)/\1\2\3\4$DEST/" -i /etc/tor/torrc
+    fi
+
+fi
+
+echo -e "\n========================================================"
+# display Tor version & torrc in log
+tor --version
+cat /etc/tor/torrc
+echo -e "========================================================\n"
+
+# else default to run whatever the user wanted like "bash"
+exec "$@"
